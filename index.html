@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beytepe Premium Padel - Yatırımcı Portalı</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        apple: {
+                            bg: '#f5f5f7',
+                            card: '#ffffff',
+                            text: '#1d1d1f',
+                            secondary: '#86868b',
+                            blue: '#0071e3', 
+                            border: '#d2d2d7',
+                            segmentedBg: '#e3e3e8',
+                            darkBg: '#000000',
+                            darkCard: '#1c1c1e',
+                            darkBorder: '#38383a',
+                            darkSecondary: '#8e8e93'
+                        }
+                    },
+                    boxShadow: {
+                        'apple': '0 4px 24px rgba(0,0,0,0.04)',
+                        'apple-hover': '0 8px 32px rgba(0,0,0,0.08)',
+                        'segmented': '0 1px 3px rgba(0,0,0,0.1)'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        .settings-scroll::-webkit-scrollbar { width: 6px; }
+        .settings-scroll::-webkit-scrollbar-track { background: transparent; }
+        .settings-scroll::-webkit-scrollbar-thumb { background-color: #d2d2d7; border-radius: 10px; }
+        .dark .settings-scroll::-webkit-scrollbar-thumb { background-color: #38383a; }
+
+        input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%;
+            background: #ffffff; cursor: pointer; margin-top: -10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 0 2px rgba(0,0,0,0.1); border: 1px solid #d2d2d7; transition: transform 0.1s ease;
+        }
+        .dark input[type=range]::-webkit-slider-thumb { border: 1px solid #38383a; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        input[type=range]:active::-webkit-slider-thumb { transform: scale(1.1); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #d2d2d7; border-radius: 2px; }
+        .dark input[type=range]::-webkit-slider-runnable-track { background: #38383a; }
+        input[type=range]:focus::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2); }
+        
+        select {
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em;
+        }
+        
+        .recharts-default-tooltip {
+            border-radius: 12px !important;
+            border: 1px solid rgba(134, 134, 139, 0.2) !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1) !important;
+        }
+        .dark .recharts-default-tooltip {
+            background-color: #2c2c2e !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+    </style>
+</head>
+<body class="bg-apple-bg dark:bg-apple-darkBg text-apple-text dark:text-white font-sans antialiased selection:bg-apple-blue selection:text-white pb-20 transition-colors duration-300">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const PARCELS = [
+            { id: 1, name: "Lodumu 28676 Ada 1 Parsel", size: 3737, type: "Sosyal Tesis", images: ["Beytepe-Lodumu-Arsa-28676-1(3737m2)-sosyal-tesis-0.6emsal-1.jpg", "Beytepe-Lodumu-Arsa-28676-1(3737m2)-sosyal-tesis-0.6emsal-2.jpg"] },
+            { id: 2, name: "Lodumu 28971 Ada 2 Parsel", size: 3699, type: "Sosyal Kültürel Tesis", images: ["Beytepe-Lodumu-Arsa-28971-2(3699m2)-sosyal-tesis-0.6emsal-1.png", "Beytepe-Lodumu-Arsa-28971-2(3699m2)-sosyal-tesis-0.6emsal-2.png"] },
+            { id: 3, name: "Lodumu 28991 Ada 1 Parsel", size: 2669, type: "Sosyal Tesis", images: ["Beytepe-Lodumu-Arsa-28991-1(2699m2)-sosyal-tesis-0.6emsal-1.png", "Beytepe-Lodumu-Arsa-28991-1(2699m2)-sosyal-tesis-0.6emsal-2.png"] },
+            { id: 4, name: "Lodumu 407 Ada 1 Parsel", size: 2560, type: "Sosyal Tesis", images: ["Beytepe-Lodumu-Arsa-407-1(2560m2)-sosyal-tesis-0.5emsal-1.png", "Beytepe-Lodumu-Arsa-407-1(2560m2)-sosyal-tesis-0.5emsal-2.png"] },
+            { id: 5, name: "Lodumu 28724 Ada 1 Parsel", size: 2383, type: "Sosyal Tesis", images: ["Beytepe-Lodumu-Arsa-287241-1(2383m2)-sosyal-tesis-0.6emsal-1.jpg", "Beytepe-Lodumu-Arsa-287241-1(2383m2)-sosyal-tesis-0.6emsal-2.jpg"] },
+            { id: 6, name: "Lodumu 29670 Ada 1 Parsel", size: 1924, type: "Sosyal Kültürel Tesis", images: ["Beytepe-Lodumu-Arsa-29670-1(1926m2)-sosyal-tesis-0.6emsal-1.jpg", "Beytepe-Lodumu-Arsa-29670-1(1926m2)-sosyal-tesis-0.6emsal-2.jpg"] },
+            { id: 7, name: "Lodumu 28502 Ada 1 Parsel", size: 6695, type: "Açık Spor Tesisi", images: ["Beytepe-Lodumu-Arsa-28502-1(6695m2)-acikspor-tesis-0.1emsal-2.jpg", "Beytepe-Lodumu-Arsa-28502-1(6695m2)-acikspor-tesis-0.1emsal-2.jpg"] },
+            { id: 8, name: "Lodumu 29770 Ada 1 Parsel", size: 5606, type: "Sosyal Tesis", images: ["Beytepe-Lodumu-Arsa-29770-1(5606m2)-sosyal-tesis-0.6emsal-1.png", "Beytepe-Lodumu-Arsa-29770-1(5606m2)-sosyal-tesis-0.6emsal-2.png"] },
+            { id: 9, name: "Angora Park 1 Rekreasyon Alanı", size: 9100, type: "Rekreasyon", images: ["Angora Arsa ( Park 1 Rekreasyon Alanı-9100 m2 0.15 kaks).jpg"] },
+            { id: 10, name: "Angora Okul Alanı", size: 18000, type: "Okul", images: ["Angora Arsa ( Okul -18.000 m2).jpg"] },
+            { id: 11, name: "Beytepe Açık Spor Tesisi 1", size: 20000, type: "Açık Spor", images: ["Beytepe Arsa ( Açık Spor Tesisi Alanı 1 - 20.000 m2).jpg", "Beytepe Arsa 1A.jpg"] },
+            { id: 12, name: "Beytepe Açık Spor Tesisi 2", size: 3333, type: "Açık Spor", images: ["Beytepe Arsa ( Açık Spor Tesisi Alanı 2 -3333 m2).jpg", "Beytepe Arsa 2A.jpg"] },
+            { id: 13, name: "Beytepe Açık Spor Tesisi 3", size: 5600, type: "Açık Spor", images: ["Beytepe Arsa ( Açık Spor Tesisi Alanı 3 - 5600 m2 ).jpg", "Beytepe Arsa ( Açık Spor Tesisi Alanı 3 - 5600 m2 Parsel Sorgu).jpg"] }
+        ];
+
+        function Dashboard() {
+            const [isDark, setIsDark] = useState(true);
+            const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+            const [isFullscreen, setIsFullscreen] = useState(false);
+
+            const [modelType, setModelType] = useState('bot');
+            const [selectedParcel, setSelectedParcel] = useState(PARCELS[8]); 
+            const [usedLandRatio, setUsedLandRatio] = useState(100);
+            const [pricePerSqm, setPricePerSqm] = useState(15000);
+            
+            const [rentPer1K, setRentPer1K] = useState(50000);     
+            const [botRentPer1K, setBotRentPer1K] = useState(5000); 
+            const [botYears, setBotYears] = useState(15); 
+
+            const [facilityCapex, setFacilityCapex] = useState(12000000);
+            
+            const [courtCount, setCourtCount] = useState(4);
+            const [hourlyRate, setHourlyRate] = useState(2500);
+            const [occupancy, setOccupancy] = useState(35);
+            const [racketRatio, setRacketRatio] = useState(80);
+            const [racketPrice, setRacketPrice] = useState(125);
+            const [cafeSpendPerPerson, setCafeSpendPerPerson] = useState(150);
+            
+            const [personnelCount, setPersonnelCount] = useState(3);
+            const [energyCost, setEnergyCost] = useState(40000);
+            const [maintenanceCost, setMaintenanceCost] = useState(25000);
+            const [marketingCost, setMarketingCost] = useState(30000);
+
+            const hoursPerDay = 14;
+
+            useEffect(() => {
+                if (isDark) { document.documentElement.classList.add('dark'); } 
+                else { document.documentElement.classList.remove('dark'); }
+            }, [isDark]);
+
+            // HESAPLAMALAR
+            const effectiveSize = selectedParcel.size * (usedLandRatio / 100);
+            const landCapex = modelType === 'buy' ? effectiveSize * pricePerSqm : 0;
+            const totalCapex = landCapex + facilityCapex; 
+            
+            const appliedRent1K = modelType === 'bot' ? botRentPer1K : rentPer1K;
+            const monthlyRent = modelType === 'buy' ? 0 : (effectiveSize / 1000) * appliedRent1K;
+            
+            const dailyBookedHours = (hoursPerDay * courtCount) * (occupancy / 100);
+            const dailyCourtRevenue = dailyBookedHours * hourlyRate;
+            
+            const avgRacketsPerBooking = (0.8 * 4) + (0.2 * 2); 
+            const dailyRacketRevenue = dailyBookedHours * (racketRatio / 100) * avgRacketsPerBooking * racketPrice;
+            
+            const dailyVisitors = dailyBookedHours * 4;
+            const dailyCafeProfit = dailyVisitors * cafeSpendPerPerson * 0.5;
+
+            const monthlyRevenue = (dailyCourtRevenue + dailyRacketRevenue + dailyCafeProfit) * 30;
+            
+            const monthlyPersonnelCost = personnelCount * 40000;
+            const fixedOpexTotal = monthlyPersonnelCost + energyCost + maintenanceCost + marketingCost;
+            const totalOpex = modelType === 'buy' ? fixedOpexTotal : fixedOpexTotal + monthlyRent;
+            
+            const ebitda = monthlyRevenue - totalOpex; 
+            const corporateTax = ebitda > 0 ? ebitda * 0.25 : 0; 
+            const monthlyNetProfit = ebitda - corporateTax;
+            const roiMonths = monthlyNetProfit > 0 ? totalCapex / monthlyNetProfit : Infinity;
+
+            const formatTL = (num) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(num);
+
+            // Recharts için Ana Veri Üretimi
+            const generateChartData = () => {
+                const data = [];
+                if (modelType === 'buy') {
+                    for (let p = 8000; p <= 40000; p += 8000) {
+                        const tCost = (effectiveSize * p) + facilityCapex;
+                        const roi = monthlyNetProfit > 0 ? parseFloat((tCost / monthlyNetProfit).toFixed(1)) : 0;
+                        data.push({ label: `${p / 1000}k ₺`, GeriDönüş: roi });
+                    }
+                } else if (modelType === 'rent') {
+                    for (let r1k = 20000; r1k <= 300000; r1k += 56000) {
+                        const calculatedRent = (effectiveSize / 1000) * r1k;
+                        const preTax = monthlyRevenue - (fixedOpexTotal + calculatedRent);
+                        const mNet = preTax > 0 ? preTax * 0.75 : 0; 
+                        const roi = mNet > 0 ? parseFloat((facilityCapex / mNet).toFixed(1)) : 0;
+                        data.push({ label: `${Math.round(calculatedRent / 1000)}k Kira`, GeriDönüş: roi });
+                    }
+                } else if (modelType === 'bot') {
+                    const steps = [];
+                    for (let y = 1; y <= botYears; y += Math.ceil(botYears / 6)) { steps.push(y); }
+                    if (!steps.includes(botYears)) steps.push(botYears);
+
+                    steps.forEach(y => {
+                        const cumulative = (monthlyNetProfit * 12 * y) - facilityCapex; 
+                        data.push({
+                            label: `${y}. Yıl`,
+                            KümülatifKâr: parseFloat((cumulative / 1000000).toFixed(2)) // Milyon TL cinsinden
+                        });
+                    });
+                }
+                return data;
+            };
+
+            const chartData = generateChartData();
+
+            // Recharts için Raket Fiyatı Veri Üretimi
+            const generateRacketChartData = () => {
+                const data = [];
+                for (let rp = 50; rp <= 200; rp += 25) {
+                    const dRacketRev = dailyBookedHours * (racketRatio / 100) * avgRacketsPerBooking * rp;
+                    const mRev = (dailyCourtRevenue + dRacketRev + dailyCafeProfit) * 30;
+                    const ebitdaRP = mRev - totalOpex;
+                    const curTax = ebitdaRP > 0 ? ebitdaRP * 0.25 : 0;
+                    const netP = ebitdaRP - curTax;
+                    data.push({ label: `₺${rp}`, NetKâr: Math.round(netP / 1000) }); // Bin TL cinsinden
+                }
+                return data;
+            };
+            
+            const racketChartData = generateRacketChartData();
+
+            const mainChartRef = useRef(null);
+            const mainChartInstance = useRef(null);
+            const racketChartRef = useRef(null);
+            const racketChartInstance = useRef(null);
+
+            // Chart.js - Ana Grafik
+            useEffect(() => {
+                if (!mainChartRef.current) return;
+                if (mainChartInstance.current) { mainChartInstance.current.destroy(); }
+
+                const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+                const tickColor = isDark ? '#8e8e93' : '#86868b';
+
+                let labels = [], values = [], barColors = [], yLabel = '';
+
+                if (modelType === 'buy') {
+                    yLabel = 'Amortisman (Ay)';
+                    for (let p = 8000; p <= 40000; p += 8000) {
+                        const tCost = (effectiveSize * p) + facilityCapex;
+                        const roi = monthlyNetProfit > 0 ? parseFloat((tCost / monthlyNetProfit).toFixed(1)) : 0;
+                        labels.push(`${p/1000}k ₺`);
+                        values.push(roi);
+                        barColors.push('#0071e3');
+                    }
+                } else if (modelType === 'rent') {
+                    yLabel = 'Amortisman (Ay)';
+                    for (let r1k = 20000; r1k <= 300000; r1k += 56000) {
+                        const calcRent = (effectiveSize / 1000) * r1k;
+                        const preTax = monthlyRevenue - (fixedOpexTotal + calcRent);
+                        const mNet = preTax > 0 ? preTax * 0.75 : 0;
+                        const roi = mNet > 0 ? parseFloat((facilityCapex / mNet).toFixed(1)) : 0;
+                        labels.push(`${Math.round(calcRent/1000)}k`);
+                        values.push(roi);
+                        barColors.push('#0071e3');
+                    }
+                } else {
+                    yLabel = 'Nakit Akışı (M TL)';
+                    const steps = [];
+                    for (let y = 1; y <= botYears; y += Math.ceil(botYears / 6)) steps.push(y);
+                    if (!steps.includes(botYears)) steps.push(botYears);
+                    steps.forEach(y => {
+                        const cum = parseFloat(((monthlyNetProfit * 12 * y - facilityCapex) / 1000000).toFixed(2));
+                        labels.push(`${y}. Yıl`);
+                        values.push(cum);
+                        barColors.push(cum < 0 ? '#ef4444' : '#10b981');
+                    });
+                }
+
+                const gradient = mainChartRef.current.getContext('2d').createLinearGradient(0, 0, 0, 220);
+                gradient.addColorStop(0, barColors[0] + 'cc');
+                gradient.addColorStop(1, barColors[0] + '44');
+
+                mainChartInstance.current = new Chart(mainChartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: barColors.map(c => c + 'cc'),
+                            borderColor: barColors,
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            borderSkipped: false,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: isDark ? '#2c2c2e' : '#fff',
+                                titleColor: isDark ? '#fff' : '#1d1d1f',
+                                bodyColor: isDark ? '#8e8e93' : '#86868b',
+                                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                                borderWidth: 1,
+                                padding: 12,
+                                cornerRadius: 12,
+                                callbacks: { label: ctx => `${ctx.parsed.y} ${yLabel}` }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: tickColor, font: { size: 11 } },
+                                border: { display: false }
+                            },
+                            y: {
+                                grid: { color: gridColor, drawBorder: false },
+                                ticks: { color: tickColor, font: { size: 11 } },
+                                border: { display: false },
+                                title: { display: true, text: yLabel, color: tickColor, font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }, [modelType, selectedParcel, usedLandRatio, facilityCapex, pricePerSqm, rentPer1K, botRentPer1K, botYears, monthlyNetProfit, monthlyRevenue, fixedOpexTotal, isDark]);
+
+            // Chart.js - Raket Grafik
+            useEffect(() => {
+                if (!racketChartRef.current) return;
+                if (racketChartInstance.current) { racketChartInstance.current.destroy(); }
+
+                const ctx = racketChartRef.current.getContext('2d');
+                const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+                const tickColor = isDark ? '#8e8e93' : '#86868b';
+
+                const grad = ctx.createLinearGradient(0, 0, 0, 220);
+                grad.addColorStop(0, 'rgba(249,115,22,0.55)');
+                grad.addColorStop(1, 'rgba(249,115,22,0.02)');
+
+                const rLabels = [], rValues = [];
+                for (let rp = 50; rp <= 200; rp += 25) {
+                    const dRacket = dailyBookedHours * (racketRatio/100) * avgRacketsPerBooking * rp;
+                    const mRev = (dailyCourtRevenue + dRacket + dailyCafeProfit) * 30;
+                    const ebit = mRev - totalOpex;
+                    const tax = ebit > 0 ? ebit * 0.25 : 0;
+                    rLabels.push(`₺${rp}`);
+                    rValues.push(Math.round((ebit - tax) / 1000));
+                }
+
+                racketChartInstance.current = new Chart(racketChartRef.current, {
+                    type: 'line',
+                    data: {
+                        labels: rLabels,
+                        datasets: [{
+                            data: rValues,
+                            borderColor: '#f97316',
+                            borderWidth: 3,
+                            fill: true,
+                            backgroundColor: grad,
+                            tension: 0.4,
+                            pointBackgroundColor: '#f97316',
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: isDark ? '#2c2c2e' : '#fff',
+                                titleColor: isDark ? '#fff' : '#1d1d1f',
+                                bodyColor: isDark ? '#8e8e93' : '#86868b',
+                                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                                borderWidth: 1,
+                                padding: 12,
+                                cornerRadius: 12,
+                                callbacks: { label: ctx => `${ctx.parsed.y} Bin TL / ay` }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: tickColor, font: { size: 11 } },
+                                border: { display: false },
+                                title: { display: true, text: 'Raket Kirası (₺)', color: tickColor, font: { size: 10 } }
+                            },
+                            y: {
+                                grid: { color: gridColor },
+                                ticks: { color: tickColor, font: { size: 11 } },
+                                border: { display: false },
+                                title: { display: true, text: 'Aylık Net Kâr (Bin ₺)', color: tickColor, font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }, [racketRatio, racketPrice, dailyBookedHours, dailyCourtRevenue, dailyCafeProfit, totalOpex, isDark]);
+
+            useEffect(() => { lucide.createIcons(); }, [selectedParcel, modelType, isDark, selectedImageIndex, isFullscreen]);
+
+            return (
+                <div class="max-w-7xl mx-auto px-4 py-8 md:py-12 relative">
+                    
+                    <div class="absolute top-4 right-4 md:top-8 md:right-8 z-50">
+                        <button 
+                            onClick={() => setIsDark(!isDark)}
+                            class="p-3 rounded-full bg-apple-card dark:bg-[#1c1c1e] shadow-apple border border-apple-border/30 dark:border-white/10 text-apple-text dark:text-white transition-all hover:scale-105"
+                        >
+                            {isDark ? <i data-lucide="sun" class="w-5 h-5"></i> : <i data-lucide="moon" class="w-5 h-5"></i>}
+                        </button>
+                    </div>
+
+                    <header class="text-center mb-10 space-y-3">
+                        <div class="inline-flex rounded-[20px] p-4 bg-apple-card dark:bg-[#1c1c1e] shadow-apple border border-apple-border/20 dark:border-white/5 mb-2">
+                            <i data-lucide="activity" class="w-8 h-8 text-apple-blue stroke-[2]"></i>
+                        </div>
+                        <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-apple-text dark:text-white">
+                            Padel House Finansal Model
+                        </h1>
+                        <p class="text-apple-secondary dark:text-apple-darkSecondary text-lg max-w-2xl mx-auto font-medium">
+                            Premium YİD Modeli Sözleşmeleri, Arsa Yatırımı ve x/y analitik simülasyonları.
+                        </p>
+                    </header>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                        
+                        {/* Sol Panel */}
+                        <div class="col-span-1 xl:col-span-4 relative">
+                            <div class="bg-apple-card dark:bg-[#1c1c1e] rounded-[28px] shadow-apple dark:shadow-none border border-apple-border/30 dark:border-apple-darkBorder transition duration-300 relative z-10 overflow-hidden flex flex-col h-full xl:max-h-[1200px]">
+                                
+                                <div class="p-8 pb-4 border-b border-apple-border/40 dark:border-apple-darkBorder bg-white/50 dark:bg-black/20 backdrop-blur-md">
+                                    <h2 class="text-xl font-bold text-apple-text dark:text-white">Senaryo Parametreleri</h2>
+                                </div>
+
+                                <div class="p-8 pt-6 overflow-y-auto settings-scroll h-full">
+                                    
+                                    <div class="mb-8">
+                                        <div class="flex p-1 bg-apple-segmentedBg dark:bg-[#2c2c2e] rounded-xl relative z-10">
+                                            <button 
+                                                onClick={() => setModelType('bot')} 
+                                                class={`flex-1 py-4 text-[13px] font-bold rounded-lg transition-all duration-200 ${modelType === 'bot' ? 'bg-white dark:bg-[#52c41a] text-apple-text dark:text-white shadow-segmented' : 'text-apple-secondary dark:text-apple-darkSecondary'}`}>
+                                                Yap-İşlet-Devret
+                                            </button>
+                                            <button 
+                                                onClick={() => setModelType('rent')} 
+                                                class={`flex-1 py-4 text-[13px] font-bold rounded-lg transition-all duration-200 ${modelType === 'rent' ? 'bg-white dark:bg-[#636366] text-apple-text dark:text-white shadow-segmented' : 'text-apple-secondary dark:text-apple-darkSecondary'}`}>
+                                                Ticari Kira
+                                            </button>
+                                            <button 
+                                                onClick={() => setModelType('buy')} 
+                                                class={`flex-1 py-4 text-[13px] font-bold rounded-lg transition-all duration-200 ${modelType === 'buy' ? 'bg-white dark:bg-[#636366] text-apple-text dark:text-white shadow-segmented' : 'text-apple-secondary dark:text-apple-darkSecondary'}`}>
+                                                Satın Alma
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* 1. ARAZİ & CAPEX */}
+                                    <div class="space-y-6 mb-10">
+                                        <h3 class="text-sm font-bold text-apple-secondary dark:text-apple-darkSecondary uppercase tracking-widest mb-4">1. Arazi & Kurulum</h3>
+                                        <div>
+                                            <label class="text-sm font-semibold text-apple-text dark:text-white flex justify-between mb-3">
+                                                <span>Arsa Adayı</span>
+                                                <span class="text-apple-blue font-bold">{selectedParcel.size} m²</span>
+                                            </label>
+                                            <select 
+                                                class="w-full bg-apple-bg dark:bg-[#2c2c2e] border border-apple-border/40 dark:border-[#38383a] text-apple-text dark:text-white font-medium text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-apple-blue/50 mb-3"
+                                                value={selectedParcel.id}
+                                                onChange={(e) => {
+                                                    setSelectedParcel(PARCELS.find(p => p.id === Number(e.target.value)));
+                                                    setUsedLandRatio(100);
+                                                    setSelectedImageIndex(0);
+                                                }}
+                                            >
+                                                {PARCELS.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
+                                                ))}
+                                            </select>
+
+                                            <div class="relative w-full h-40 sm:h-48 rounded-xl overflow-hidden shadow-sm border border-apple-border/50 dark:border-[#38383a] group mt-1">
+                                                <img 
+                                                    src={selectedParcel.images[selectedImageIndex] || selectedParcel.images[0]} 
+                                                    alt={selectedParcel.name} 
+                                                    class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-105 cursor-zoom-in" 
+                                                    onClick={() => setIsFullscreen(true)}
+                                                />
+                                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none z-10"></div>
+                                                
+                                                {selectedParcel.images.length > 1 && (
+                                                    <div class="absolute top-2 right-2 z-30 flex gap-1 bg-black/40 backdrop-blur-md rounded-lg p-1 border border-white/20">
+                                                        {selectedParcel.images.map((_, idx) => (
+                                                            <button 
+                                                                key={idx}
+                                                                onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(idx); }}
+                                                                class={`w-6 h-6 flex items-center justify-center rounded-md text-[11px] font-bold transition-all ${selectedImageIndex === idx ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+                                                            >
+                                                                {idx + 1}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div class="absolute bottom-3 left-3 right-3 z-20 flex justify-between items-end pointer-events-none">
+                                                    <div>
+                                                        <div class="text-[10px] font-bold text-apple-blue uppercase tracking-widest mb-0.5">{selectedParcel.type}</div>
+                                                        <div class="text-[14px] font-bold text-white leading-tight drop-shadow-md">{selectedParcel.name}</div>
+                                                    </div>
+                                                    <div class="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-white/20 flex items-center shadow-lg">
+                                                        <i data-lucide="scan" class="w-3.5 h-3.5 text-white/90 mr-1.5"></i>
+                                                        <span class="text-xs font-bold text-white">{selectedParcel.size} m²</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {selectedParcel.size > 2000 && (
+                                            <div class="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/20 mt-2">
+                                                <div class="flex justify-between mb-2">
+                                                    <label class="text-[13px] font-bold text-indigo-800 dark:text-indigo-400">Kısmi Kiralama Oranı</label>
+                                                    <span class="font-bold text-indigo-600 dark:text-indigo-300">%{usedLandRatio}</span>
+                                                </div>
+                                                <div class="flex justify-between mb-3 text-xs text-indigo-700/70 dark:text-indigo-300 font-medium">
+                                                    <span>Efektif Kullanım Alanı:</span>
+                                                    <span class="font-bold">{Math.round(effectiveSize)} m²</span>
+                                                </div>
+                                                <input type="range" min="10" max="100" step="5" class="accent-indigo-500 w-full" value={usedLandRatio} onChange={(e) => setUsedLandRatio(Number(e.target.value))} />
+                                            </div>
+                                        )}
+                                        
+                                        {modelType === 'buy' ? (
+                                            <div>
+                                                <div class="flex justify-between mb-2">
+                                                    <label class="text-[13px] font-semibold text-apple-text dark:text-white">M² Satın Alma Fiyatı</label>
+                                                    <span class="font-bold text-apple-blue">{formatTL(pricePerSqm)}</span>
+                                                </div>
+                                                <input type="range" min="8000" max="40000" step="1000" value={pricePerSqm} onChange={(e) => setPricePerSqm(Number(e.target.value))} />
+                                            </div>
+                                        ) : modelType === 'rent' ? (
+                                            <div class="bg-apple-blue/5 dark:bg-apple-blue/10 p-4 rounded-xl border border-apple-blue/20">
+                                                <div class="flex justify-between mb-2">
+                                                    <label class="text-[13px] font-bold text-apple-blue">Toplam Aylık Kira</label>
+                                                    <span class="font-bold text-apple-blue text-lg">{formatTL(monthlyRent)}</span>
+                                                </div>
+                                                <div class="flex justify-between mb-3 text-xs text-apple-secondary dark:text-apple-darkSecondary font-medium">
+                                                    <span>1.000 m² Başına Ticari Fiyat:</span>
+                                                    <span>{formatTL(rentPer1K)}</span>
+                                                </div>
+                                                <input type="range" min="20000" max="300000" step="10000" value={rentPer1K} onChange={(e) => setRentPer1K(Number(e.target.value))} />
+                                            </div>
+                                        ) : (
+                                            <div class="bg-emerald-500/10 dark:bg-emerald-500/20 p-5 rounded-2xl border border-emerald-500/30 space-y-5">
+                                                
+                                                <div>
+                                                    <div class="flex justify-between mb-2">
+                                                        <label class="text-[13px] font-extrabold text-emerald-800 dark:text-emerald-400">YİD Sözleşme Süresi</label>
+                                                        <span class="font-bold text-emerald-800 dark:text-emerald-400 text-lg">{botYears} YIL</span>
+                                                    </div>
+                                                    <input type="range" min="5" max="30" step="1" class="accent-emerald-600" value={botYears} onChange={(e) => setBotYears(Number(e.target.value))} />
+                                                </div>
+
+                                                <div class="border-t border-emerald-500/20 pt-4">
+                                                    <div class="flex justify-between mb-2">
+                                                        <label class="text-[13px] font-bold text-emerald-700 dark:text-emerald-400/80">Kamuya Ödenecek Toplam Aylık Kira</label>
+                                                        <span class="font-bold text-emerald-700 dark:text-emerald-400/80 text-lg">{formatTL(monthlyRent)}</span>
+                                                    </div>
+                                                    <div class="flex justify-between mb-3 text-xs text-emerald-700/80 dark:text-emerald-300 font-medium">
+                                                        <span>1.000 m² Başına YİD Fiyatı:</span>
+                                                        <span>{formatTL(botRentPer1K)}</span>
+                                                    </div>
+                                                    <input type="range" min="1000" max="50000" step="1000" class="accent-emerald-600 opacity-80" value={botRentPer1K} onChange={(e) => setBotRentPer1K(Number(e.target.value))} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <div class="flex justify-between mb-2">
+                                                <label class="text-[13px] font-semibold text-apple-text dark:text-white">Demos & İnşaat (CAPEX)</label>
+                                                <span class="font-bold text-apple-text dark:text-white">{formatTL(facilityCapex)}</span>
+                                            </div>
+                                            <input type="range" min="8000000" max="25000000" step="500000" value={facilityCapex} onChange={(e) => setFacilityCapex(Number(e.target.value))} />
+                                        </div>
+                                    </div>
+
+                                    <div class="my-6 border-t border-apple-border/40 dark:border-[#2c2c2e]"></div>
+
+                                    {/* 2. GELİR */}
+                                    <div class="space-y-6 mb-10">
+                                        <h3 class="text-sm font-bold text-apple-secondary dark:text-apple-darkSecondary uppercase tracking-widest mb-4">2. Gelir Yaratımı</h3>
+                                        
+                                        <div class="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/20 mb-4">
+                                            <div class="flex justify-between mb-2">
+                                                <label class="text-[14px] font-bold text-blue-800 dark:text-blue-400">Tesis Kort Sayısı</label>
+                                                <span class="font-bold text-blue-600 dark:text-blue-300 text-lg">{courtCount} Adet</span>
+                                            </div>
+                                            <input type="range" min="2" max="12" step="1" className="accent-blue-500" value={courtCount} onChange={(e) => setCourtCount(Number(e.target.value))} />
+                                        </div>
+
+                                        <div>
+                                            <div class="flex justify-between mb-2">
+                                                <label class="text-[13px] font-semibold text-apple-text dark:text-white">Saatlik Kort Kirası</label>
+                                                <span class="font-bold text-emerald-600 dark:text-emerald-400">{formatTL(hourlyRate)}</span>
+                                            </div>
+                                            <input type="range" min="1500" max="5000" step="100" value={hourlyRate} onChange={(e) => setHourlyRate(Number(e.target.value))} />
+                                        </div>
+
+                                        <div>
+                                            <div class="flex justify-between mb-2">
+                                                <label class="text-[13px] font-semibold text-apple-text dark:text-white">Genel Kort Doluluğu</label>
+                                                <span class="font-bold text-apple-text dark:text-white">%{occupancy}</span>
+                                            </div>
+                                            <input type="range" min="10" max="80" step="5" value={occupancy} onChange={(e) => setOccupancy(Number(e.target.value))} />
+                                        </div>
+
+                                        <div class="pt-4 border-t border-apple-border/30 dark:border-white/5 space-y-4">
+                                            <div>
+                                                <div class="flex justify-between mb-2">
+                                                    <label class="text-[13px] font-semibold text-apple-text dark:text-white">Raket Kiralama Talebi</label>
+                                                    <span class="font-bold text-orange-500">%{racketRatio}</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" step="10" value={racketRatio} onChange={(e) => setRacketRatio(Number(e.target.value))} />
+                                            </div>
+
+                                            <div>
+                                                <div class="flex justify-between mb-2">
+                                                    <label class="text-[13px] font-semibold text-apple-text dark:text-white">Birim Raket Fiyatı</label>
+                                                    <span class="font-bold text-orange-500">{formatTL(racketPrice)}</span>
+                                                </div>
+                                                <input type="range" min="50" max="200" step="10" value={racketPrice} onChange={(e) => setRacketPrice(Number(e.target.value))} />
+                                            </div>
+                                        </div>
+
+                                        <div class="pt-4 border-t border-apple-border/30 dark:border-white/5">
+                                            <div class="flex justify-between mb-2">
+                                                <label class="text-[13px] font-semibold text-apple-text dark:text-white">Kişi Başı Kafe Harcaması</label>
+                                                <span class="font-bold text-purple-500">{formatTL(cafeSpendPerPerson)}</span>
+                                            </div>
+                                            <input type="range" min="0" max="500" step="25" value={cafeSpendPerPerson} onChange={(e) => setCafeSpendPerPerson(Number(e.target.value))} />
+                                        </div>
+                                    </div>
+
+                                    <div class="my-6 border-t border-apple-border/40 dark:border-[#2c2c2e]"></div>
+
+                                    {/* 3. OPEX */}
+                                    <div class="space-y-6 pb-6">
+                                        <h3 class="text-sm font-bold text-apple-secondary dark:text-apple-darkSecondary uppercase tracking-widest mb-4">3. Aylık Giderler (OPEX)</h3>
+                                        <div>
+                                            <div class="flex justify-between mb-2">
+                                                <label class="text-[13px] font-semibold text-apple-text dark:text-white">Personel Sayısı</label>
+                                                <span class="font-bold text-red-500">{personnelCount} Kişi</span>
+                                            </div>
+                                            <input type="range" min="2" max="12" step="1" value={personnelCount} onChange={(e) => setPersonnelCount(Number(e.target.value))} />
+                                        </div>
+
+                                        <div>
+                                            <div class="flex justify-between mb-2">
+                                                <label class="text-[13px] font-semibold text-apple-text dark:text-white">Aylık Reklam Devamlılığı</label>
+                                                <span class="font-bold text-red-500">{formatTL(marketingCost)}</span>
+                                            </div>
+                                            <input type="range" min="10000" max="150000" step="5000" value={marketingCost} onChange={(e) => setMarketingCost(Number(e.target.value))} />
+                                        </div>
+
+                                        <div>
+                                            <div class="flex justify-between mb-2">
+                                                <label class="text-[13px] font-semibold text-apple-text dark:text-white">Enerji Gideri (Elekt/Su)</label>
+                                                <span class="font-bold text-red-500">{formatTL(energyCost)}</span>
+                                            </div>
+                                            <input type="range" min="15000" max="150000" step="5000" value={energyCost} onChange={(e) => setEnergyCost(Number(e.target.value))} />
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Sağ Panel */}
+                        <div class="col-span-1 xl:col-span-8 space-y-6">
+                            
+                            {/* TOPLAM YATIRIM */}
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-2">
+                                <div class="bg-apple-card dark:bg-[#1c1c1e] rounded-[24px] p-5 shadow-sm border border-apple-border/20 dark:border-[#2c2c2e] flex flex-col justify-center transition hover:scale-[1.02]">
+                                    <div class="text-apple-secondary dark:text-apple-darkSecondary text-[12px] font-semibold mb-1 uppercase tracking-wider flex items-center gap-1.5">
+                                        <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> {modelType === 'bot' ? 'Arazi Modeli' : 'Arsa Maliyeti'}
+                                    </div>
+                                    <div class="text-xl font-bold tracking-tight text-apple-text dark:text-white">
+                                        {modelType === 'rent' ? '₺0 (Özel Kira)' : modelType === 'bot' ? 'Tahsis / Kamu' : formatTL(landCapex)}
+                                    </div>
+                                </div>
+                                <div class="bg-apple-card dark:bg-[#1c1c1e] rounded-[24px] p-5 shadow-sm border border-apple-border/20 dark:border-[#2c2c2e] flex flex-col justify-center transition hover:scale-[1.02]">
+                                    <div class="text-apple-secondary dark:text-apple-darkSecondary text-[12px] font-semibold mb-1 uppercase tracking-wider flex items-center gap-1.5">
+                                        <i data-lucide="hammer" class="w-3.5 h-3.5"></i> Tesis (CAPEX)
+                                    </div>
+                                    <div class="text-xl font-bold tracking-tight text-apple-text dark:text-white">
+                                        {formatTL(facilityCapex)}
+                                    </div>
+                                </div>
+                                <div class="bg-apple-blue dark:bg-apple-blue relative overflow-hidden rounded-[24px] p-5 shadow-md border-none flex flex-col justify-center transition hover:scale-[1.02]">
+                                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/20 rounded-full blur-xl pointer-events-none"></div>
+                                    <div class="text-white/80 text-[12px] font-semibold mb-1 uppercase tracking-wider flex items-center gap-1.5 relative z-10">
+                                        <i data-lucide="banknote" class="w-3.5 h-3.5"></i> MASAÜSTÜ TOPLAM YATIRIM
+                                    </div>
+                                    <div class="text-2xl font-bold tracking-tight text-white relative z-10">
+                                        {formatTL(totalCapex)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Main Profit Card */}
+                            <div class="bg-apple-card dark:bg-[#1c1c1e] rounded-[28px] py-10 px-6 sm:px-10 shadow-apple dark:shadow-none border border-apple-border/20 dark:border-apple-darkBorder relative overflow-hidden">
+                                <div class="absolute -top-10 -right-10 w-96 h-96 bg-apple-blue/5 dark:bg-apple-blue/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                                <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-6 border-b border-apple-border/40 dark:border-apple-darkBorder pb-6 relative z-10">
+                                    <div>
+                                        <div class="text-apple-secondary dark:text-apple-darkSecondary text-[13px] font-semibold mb-2 uppercase tracking-tight flex items-center gap-2">
+                                            Aylık Genel Net Kâr
+                                        </div>
+                                        <div class="text-[2.75rem] sm:text-[3.25rem] leading-none font-bold tracking-tight text-apple-text dark:text-white">
+                                            {monthlyNetProfit > 0 ? formatTL(monthlyNetProfit) : "Zarar"}
+                                        </div>
+                                    </div>
+                                    <div class="text-left md:text-right">
+                                        <div class="text-apple-secondary dark:text-apple-darkSecondary text-[13px] font-semibold mb-2 uppercase tracking-tight">
+                                            ROI: Amortisman Hızı
+                                        </div>
+                                        <div class="text-4xl font-bold tracking-tight text-apple-blue flex items-baseline gap-1">
+                                            {monthlyNetProfit > 0 ? (
+                                                <>{roiMonths.toFixed(1)} <span class="text-xl font-semibold text-apple-blue/70">Ay</span></>
+                                            ) : (
+                                                <span class="text-red-500 text-2xl">--</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center bg-gray-50 dark:bg-[#1a1a1c] px-5 py-3 rounded-xl border border-apple-border/30 dark:border-[#2c2c2e] mb-8 relative z-10">
+                                    <span class="text-apple-secondary dark:text-[#a1a1aa] font-semibold text-[13px]">Vergi Öncesi Kâr (EBITDA): <span class="text-apple-text dark:text-white">{formatTL(ebitda)}</span></span>
+                                    <span class="text-red-500 font-semibold text-[13px] mt-2 sm:mt-0">- Yasal Vergi (%25): {formatTL(corporateTax)}</span>
+                                </div>
+
+                                {modelType === 'bot' && monthlyNetProfit > 0 && (
+                                    <div class="bg-emerald-500/10 dark:bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/20 rounded-2xl p-6 mb-8 relative z-10 flex flex-col md:flex-row items-center justify-between">
+                                        <div>
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                <h4 class="text-emerald-700 dark:text-emerald-400 font-bold uppercase text-xs tracking-wider">
+                                                    YİD {botYears} Yıllık Sözleşme Getirisi
+                                                </h4>
+                                            </div>
+                                            <p class="text-[12px] text-emerald-800/70 dark:text-emerald-300/70 max-w-sm">
+                                                Sözleşme sonunda (yatırdığınız {formatTL(totalCapex)} maliyet düşüldükten sonra) tamamen size kalacak garantili kâr havuzu.
+                                            </p>
+                                        </div>
+                                        <div class="mt-4 md:mt-0 text-right">
+                                            <div class="text-3xl font-black text-emerald-700 dark:text-emerald-400">
+                                                {formatTL((monthlyNetProfit * 12 * botYears) - facilityCapex)}
+                                            </div>
+                                            <div class="text-xs text-emerald-600/70 dark:text-emerald-500 mt-1 uppercase font-semibold">Net Servet Birikimi (Milyon TL)</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* PREMIUM CHART.JS X/Y GRAFİKLERİ */}
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                
+                                {/* Ana Bar Grafik */}
+                                <div class="bg-apple-card dark:bg-[#1c1c1e] rounded-[28px] p-6 shadow-apple dark:shadow-none border border-apple-border/20 dark:border-apple-darkBorder flex flex-col">
+                                    <div class="mb-4">
+                                        <h3 class="text-sm font-bold tracking-tight text-apple-text dark:text-white uppercase">
+                                            {modelType === 'buy' ? "M² Fiyatı vs Amortisman (Ay)" : modelType === 'bot' ? "Yıllara Göre Kümülatif Nakit Akışı" : "Aylık Kira vs Amortisman (Ay)"}
+                                        </h3>
+                                        <p class="text-[12px] text-apple-secondary dark:text-apple-darkSecondary mt-1">
+                                            {modelType === 'bot' ? "X ekseninde sözleşme yılları, Y ekseninde net servet birikimi (Milyon TL). Kırmızı = henüz zararda, Yeşil = amortize oldu." : "X ekseninde değişken maliyet, Y ekseninde amortisman süresi (Ay)."}
+                                        </p>
+                                    </div>
+                                    <div style={{ height: '220px', position: 'relative' }}>
+                                        <canvas ref={mainChartRef}></canvas>
+                                    </div>
+                                </div>
+
+                                {/* Raket Alan (Line) Grafik */}
+                                <div class="bg-apple-card dark:bg-[#1c1c1e] rounded-[28px] p-6 shadow-apple dark:shadow-none border border-apple-border/20 dark:border-apple-darkBorder flex flex-col">
+                                    <div class="mb-4">
+                                        <h3 class="text-sm font-bold tracking-tight text-apple-text dark:text-white uppercase">
+                                            Raket Fiyatı vs Net Kâr Eğrisi
+                                        </h3>
+                                        <p class="text-[12px] text-apple-secondary dark:text-apple-darkSecondary mt-1">
+                                            X ekseninde raket birimi kirası (50₺ - 200₺), Y ekseninde işletmenin aylık net kârı (Bin TL). Eğrinin ivmesi kira fiyatının gücünü gösterir.
+                                        </p>
+                                    </div>
+                                    <div style={{ height: '220px', position: 'relative' }}>
+                                        <canvas ref={racketChartRef}></canvas>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    {isFullscreen && (
+                        <div class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8" onClick={() => setIsFullscreen(false)}>
+                            <button 
+                                class="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition z-50"
+                                onClick={() => setIsFullscreen(false)}
+                            >
+                                <i data-lucide="x" class="w-6 h-6"></i>
+                            </button>
+                            
+                            <img 
+                                src={selectedParcel.images[selectedImageIndex] || selectedParcel.images[0]} 
+                                class="max-w-full max-h-full object-contain rounded-xl shadow-2xl" 
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            
+                            {selectedParcel.images.length > 1 && (
+                                <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 bg-black/80 backdrop-blur-xl rounded-full p-2 border border-white/20" onClick={(e) => e.stopPropagation()}>
+                                    {selectedParcel.images.map((_, idx) => (
+                                        <button 
+                                            key={idx}
+                                            onClick={() => setSelectedImageIndex(idx)}
+                                            class={`w-12 h-12 flex items-center justify-center rounded-full text-lg font-bold transition-all ${selectedImageIndex === idx ? 'bg-white text-black scale-110' : 'text-white hover:bg-white/20'}`}
+                                        >
+                                            {idx + 1}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Dashboard />);
+    </script>
+</body>
+</html>
