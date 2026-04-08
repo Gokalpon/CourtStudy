@@ -142,7 +142,12 @@
             const [maintenanceCost, setMaintenanceCost] = useState(25000);
             const [marketingCost, setMarketingCost] = useState(30000);
             const [isTwoStoryCafe, setIsTwoStoryCafe] = useState(false);
-            const [analysisOccupancy, setAnalysisOccupancy] = useState(35); // Hassasiyet analizi için özel doluluk
+            const [analysisOccupancy, setAnalysisOccupancy] = useState(35); 
+            const [analysisCourtRate, setAnalysisCourtRate] = useState(2500); 
+            const [analysisRacketPrice, setAnalysisRacketPrice] = useState(150); 
+            
+            const breakdownChartRef = useRef(null);
+            const breakdownChartInstance = useRef(null);
 
             const hoursPerDay = 14;
 
@@ -186,6 +191,8 @@
             const mainChartInstance = useRef(null);
             const racketChartRef = useRef(null);
             const racketChartInstance = useRef(null);
+            const breakdownChartRef_legacy = useRef(null); // Just for naming conflict avoidance if any
+
 
             // Chart.js - Ana Grafik
             useEffect(() => {
@@ -301,16 +308,21 @@
                 const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
                 const tickColor = isDark ? '#8e8e93' : '#86868b';
 
-                // Daha gerçekçi Saha Fiyatları: 1500, 2000, 2500, 3000, 3500
-                const courtRates = [1500, 2000, 2500, 3000, 3500];
-                const racketPrices = [100, 150, 200, 250, 300];
-                const colors = ['#f43f5e', '#f97316', '#0071e3', '#10b981', '#8b5cf6'];
+                // X-Ekseni: Doluluk Oranı (%10 - %90)
+                const occSteps = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+                
+                // Senaryolar: Düşük Fiyat (-%20), Baz Fiyat (Slider), Yüksek Fiyat (+%20)
+                const scenarios = [
+                    { label: 'Defansif (Baz -%20)', court: analysisCourtRate * 0.8, racket: analysisRacketPrice * 0.8, color: '#f43f5e' },
+                    { label: 'Baz Senaryo', court: analysisCourtRate, racket: analysisRacketPrice, color: '#0071e3' },
+                    { label: 'Agresif (Baz +%20)', court: analysisCourtRate * 1.2, racket: analysisRacketPrice * 1.2, color: '#10b981' }
+                ];
 
-                const datasets = courtRates.map((cr, idx) => {
-                    const data = racketPrices.map(rp => {
-                        const dBooked = (hoursPerDay * courtCount) * (analysisOccupancy / 100);
-                        const dCourtRev = dBooked * cr;
-                        const dRacketRev = dBooked * (racketRatio/100) * avgRacketsPerBooking * rp;
+                const datasets = scenarios.map(sc => {
+                    const data = occSteps.map(occ => {
+                        const dBooked = (hoursPerDay * courtCount) * (occ / 100);
+                        const dCourtRev = dBooked * sc.court;
+                        const dRacketRev = dBooked * (racketRatio/100) * avgRacketsPerBooking * sc.racket;
                         const mRev = (dCourtRev + dRacketRev + dailyCafeProfit) * 30;
                         const ebit = mRev - totalOpex;
                         const tax = ebit > 0 ? ebit * 0.25 : 0;
@@ -318,13 +330,13 @@
                     });
 
                     return {
-                        label: `Saha: ${formatTL(cr)}`,
+                        label: sc.label,
                         data: data,
-                        borderColor: colors[idx],
-                        backgroundColor: colors[idx],
+                        borderColor: sc.color,
+                        backgroundColor: sc.color,
                         borderWidth: 2.5,
                         tension: 0.4,
-                        pointRadius: 3,
+                        pointRadius: 0,
                         pointHoverRadius: 6,
                     };
                 });
@@ -332,7 +344,7 @@
                 racketChartInstance.current = new Chart(racketChartRef.current, {
                     type: 'line',
                     data: {
-                        labels: racketPrices.map(p => `₺${p} Raket`),
+                        labels: occSteps.map(o => `%${o}`),
                         datasets: datasets
                     },
                     options: {
@@ -343,15 +355,7 @@
                             legend: { 
                                 display: true, 
                                 position: 'top', 
-                                align: 'center',
-                                labels: { 
-                                    color: tickColor, 
-                                    padding: 20,
-                                    boxWidth: 8, 
-                                    boxHeight: 8,
-                                    usePointStyle: true,
-                                    font: { size: 10, weight: '600' } 
-                                }
+                                labels: { color: tickColor, boxWidth: 8, usePointStyle: true, font: { size: 10, weight: '600' } }
                             },
                             tooltip: {
                                 backgroundColor: isDark ? '#1c1c1e' : '#fff',
@@ -359,8 +363,6 @@
                                 bodyColor: isDark ? '#a1a1aa' : '#86868b',
                                 padding: 12,
                                 cornerRadius: 12,
-                                borderWidth: 1,
-                                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                                 callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}k TL Net Kâr` }
                             }
                         },
@@ -368,13 +370,13 @@
                             x: {
                                 grid: { display: false },
                                 ticks: { color: tickColor, font: { size: 10 } },
-                                border: { display: false }
+                                border: { display: false },
+                                title: { display: true, text: 'Simüle Doluluk Oranı (%)', color: tickColor, font: { size: 10 } }
                             },
                             y: {
                                 grid: { color: gridColor },
                                 ticks: { 
                                     color: tickColor, 
-                                    font: { size: 10 },
                                     callback: (val) => val >= 1000 ? (val/1000).toFixed(1) + 'M' : val + 'k'
                                 },
                                 border: { display: false },
@@ -383,7 +385,91 @@
                         }
                     }
                 });
-            }, [courtCount, analysisOccupancy, racketRatio, dailyCafeProfit, totalOpex, isDark]);
+            }, [courtCount, analysisCourtRate, analysisRacketPrice, racketRatio, dailyCafeProfit, totalOpex, isDark]);
+
+            // Chart.js - Breakdown (Detaylı Ayrışım)
+            useEffect(() => {
+                if (!breakdownChartRef.current) return;
+                if (breakdownChartInstance.current) { breakdownChartInstance.current.destroy(); }
+
+                const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+                const tickColor = isDark ? '#8e8e93' : '#86868b';
+
+                const displayYears = 15;
+                const labels = [];
+                const courtRevData = [], racketRevData = [], cafeRevData = [];
+                const rentData = [], personnelData = [], opexData = [], taxData = [];
+
+                for (let y = 1; y <= displayYears; y++) {
+                    const growthFactor = Math.pow(1.05, y - 1); // %5 Yıllık Gelir Artışı
+                    const inflationFactor = Math.pow(1.03, y - 1); // %3 Yıllık Gider Artışı
+                    
+                    const yrCourt = (dailyCourtRevenue * 30 * 12 * growthFactor) / 1000000;
+                    const yrRacket = (dailyRacketRevenue * 30 * 12 * growthFactor) / 1000000;
+                    const yrCafe = (dailyCafeProfit * 30 * 12 * growthFactor) / 1000000;
+                    
+                    const yrRent = (monthlyRent * 12 * inflationFactor) / 1000000;
+                    const yrPersonnel = (monthlyPersonnelCost * 12 * inflationFactor) / 1000000;
+                    const yrFixed = ((energyCost + maintenanceCost + marketingCost) * 12 * inflationFactor) / 1000000;
+                    
+                    const yrEbitda = (yrCourt + yrRacket + yrCafe) - (yrRent + yrPersonnel + yrFixed);
+                    const yrTax = yrEbitda > 0 ? yrEbitda * 0.25 : 0;
+
+                    labels.push(`${y}. Yıl`);
+                    courtRevData.push(yrCourt);
+                    racketRevData.push(yrRacket);
+                    cafeRevData.push(yrCafe);
+                    rentData.push(-yrRent);
+                    personnelData.push(-yrPersonnel);
+                    opexData.push(-yrFixed);
+                    taxData.push(-yrTax);
+                }
+
+                breakdownChartInstance.current = new Chart(breakdownChartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: 'Saha Geliri', data: courtRevData, backgroundColor: '#0071e3', stack: 'Stack 0' },
+                            { label: 'Raket Geliri', data: racketRevData, backgroundColor: '#f97316', stack: 'Stack 0' },
+                            { label: 'Kafe Geliri', data: cafeRevData, backgroundColor: '#8b5cf6', stack: 'Stack 0' },
+                            { label: 'Kira Gideri', data: rentData, backgroundColor: '#ef4444', stack: 'Stack 1' },
+                            { label: 'Personel', data: personnelData, backgroundColor: '#f43f5e', stack: 'Stack 1' },
+                            { label: 'Genel Opex', data: opexData, backgroundColor: '#fbbf24', stack: 'Stack 1' },
+                            { label: 'Vergi', data: taxData, backgroundColor: '#6b7280', stack: 'Stack 1' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                position: 'top', 
+                                labels: { color: tickColor, boxWidth: 10, font: { size: 10 } } 
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: isDark ? '#1c1c1e' : '#fff',
+                                titleColor: isDark ? '#fff' : '#1d1d1f',
+                                callbacks: {
+                                    label: ctx => `${ctx.dataset.label}: ${Math.abs(ctx.parsed.y).toFixed(2)}M TL`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { stacked: true, grid: { display: false }, ticks: { color: tickColor } },
+                            y: { 
+                                stacked: true, 
+                                grid: { color: gridColor }, 
+                                ticks: { color: tickColor },
+                                title: { display: true, text: 'Yıllık Nakit Dağılımı (Milyon TL)', color: tickColor, font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }, [dailyCourtRevenue, dailyRacketRevenue, dailyCafeProfit, monthlyRent, monthlyPersonnelCost, energyCost, maintenanceCost, marketingCost, isDark]);
+
 
             useEffect(() => { lucide.createIcons(); }, [selectedParcel, modelType, isDark, selectedImageIndex, isFullscreen]);
 
@@ -821,20 +907,30 @@
                                             </p>
                                         </div>
                                         
-                                        <div class="w-full md:w-64 bg-apple-bg dark:bg-[#2c2c2e] p-4 rounded-2xl border border-apple-border/20">
-                                            <div class="flex justify-between items-center mb-2">
-                                                <span class="text-[11px] font-extrabold text-apple-secondary uppercase tracking-tight">Simule Doluluk</span>
-                                                <span class="text-sm font-bold text-apple-blue">%{analysisOccupancy}</span>
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full md:w-auto">
+                                            <div class="bg-apple-bg dark:bg-[#2c2c2e] p-4 rounded-2xl border border-apple-border/20">
+                                                <div class="flex justify-between items-center mb-2">
+                                                    <span class="text-[10px] font-extrabold text-apple-secondary uppercase tracking-tight">Saha Kirası (S)</span>
+                                                    <span class="text-xs font-bold text-apple-blue font-mono">{formatTL(analysisCourtRate)}</span>
+                                                </div>
+                                                <input type="range" min="1500" max="5000" step="100" class="w-full h-1 bg-apple-border dark:bg-apple-darkBorder rounded-lg appearance-none cursor-pointer accent-apple-blue" value={analysisCourtRate} onChange={(e) => setAnalysisCourtRate(Number(e.target.value))} />
                                             </div>
-                                            <input 
-                                                type="range" 
-                                                min="10" 
-                                                max="90" 
-                                                step="5" 
-                                                class="w-full h-1.5 bg-apple-border dark:bg-apple-darkBorder rounded-lg appearance-none cursor-pointer accent-apple-blue"
-                                                value={analysisOccupancy} 
-                                                onChange={(e) => setAnalysisOccupancy(Number(e.target.value))} 
-                                            />
+
+                                            <div class="bg-apple-bg dark:bg-[#2c2c2e] p-4 rounded-2xl border border-apple-border/20">
+                                                <div class="flex justify-between items-center mb-2">
+                                                    <span class="text-[10px] font-extrabold text-apple-secondary uppercase tracking-tight">Raket Kirası (R)</span>
+                                                    <span class="text-xs font-bold text-orange-500 font-mono">{formatTL(analysisRacketPrice)}</span>
+                                                </div>
+                                                <input type="range" min="50" max="300" step="10" class="w-full h-1 bg-apple-border dark:bg-apple-darkBorder rounded-lg appearance-none cursor-pointer accent-orange-500" value={analysisRacketPrice} onChange={(e) => setAnalysisRacketPrice(Number(e.target.value))} />
+                                            </div>
+
+                                            <div class="bg-apple-bg dark:bg-[#2c2c2e] p-4 rounded-2xl border border-apple-border/20">
+                                                <div class="flex justify-between items-center mb-2">
+                                                    <span class="text-[10px] font-extrabold text-apple-secondary uppercase tracking-tight">Doluluk Noktası (%)</span>
+                                                    <span class="text-xs font-bold text-emerald-500 font-mono">%{analysisOccupancy}</span>
+                                                </div>
+                                                <input type="range" min="10" max="90" step="5" class="w-full h-1 bg-apple-border dark:bg-apple-darkBorder rounded-lg appearance-none cursor-pointer accent-emerald-500" value={analysisOccupancy} onChange={(e) => setAnalysisOccupancy(Number(e.target.value))} />
+                                            </div>
                                         </div>
                                     </div>
                                     <div style={{ height: '400px', position: 'relative' }}>
@@ -843,8 +939,56 @@
                                     <div class="mt-6 p-4 bg-gray-50 dark:bg-black/20 rounded-xl border border-apple-border/10 flex items-center gap-3">
                                         <i data-lucide="info" class="w-4 h-4 text-apple-blue"></i>
                                         <p class="text-[11px] text-apple-secondary dark:text-apple-darkSecondary leading-tight">
-                                            *Yukarıdaki matris, seçtiğiniz <b>%{analysisOccupancy} doluluk oranına</b> göre dinamik olarak hesaplanmaktadır. Saha ücreti arttıkça eğriler yukarı kayar, raket fiyatı ise eğrilerin eğimini belirler.
+                                            *X ekseni doluluk oranını temsil eder. <b>Saha ve Raket slider'larını</b> kullanarak "Baz Senaryo" fiyatlarını belirleyebilirsiniz. Grafik, bu fiyatların %20 altı ve üstü için kârlılık eğrilerini anlık olarak çizer.
                                         </p>
+                                    </div>
+                                </div>
+
+                                {/* Chart 3: Detaylı Analiz Breakdown */}
+                                <div class="bg-apple-card dark:bg-[#1c1c1e] rounded-[28px] p-8 shadow-apple dark:shadow-none border border-apple-border/20 dark:border-apple-darkBorder flex flex-col">
+                                    <div class="mb-10">
+                                        <h3 class="text-lg font-extrabold tracking-tight text-apple-text dark:text-white uppercase flex items-center gap-2">
+                                            <i data-lucide="pie-chart" class="w-5 h-5 text-purple-500"></i>
+                                            Yıllık Finansal Anatomi & Dağılım (15 Yıl)
+                                        </h3>
+                                        <p class="text-[12px] text-apple-secondary dark:text-apple-darkSecondary mt-1 font-medium italic">
+                                            Gelir ve gider kalemlerinin yıllara göre projeksiyonu (%5 büyüme ve %3 inflation düzeltmeli).
+                                        </p>
+                                    </div>
+
+                                    <div class="flex flex-col lg:flex-row gap-10">
+                                        <div class="flex-1" style={{ height: '450px', position: 'relative' }}>
+                                            <canvas ref={breakdownChartRef}></canvas>
+                                        </div>
+                                        
+                                        <div class="lg:w-72 space-y-4">
+                                            <div class="p-4 bg-gray-50 dark:bg-black/20 rounded-2xl border border-apple-border/10">
+                                                <div class="text-[10px] font-bold text-apple-secondary uppercase mb-1">Yıllık Brüt Ciro</div>
+                                                <div class="text-xl font-bold text-apple-text dark:text-white">{formatTL(monthlyRevenue * 12)}</div>
+                                            </div>
+                                            <div class="p-4 bg-gray-50 dark:bg-black/20 rounded-2xl border border-apple-border/10">
+                                                <div class="text-[10px] font-bold text-apple-secondary uppercase mb-1">Yıllık Toplam Gider</div>
+                                                <div class="text-xl font-bold text-red-500">{formatTL(totalOpex * 12)}</div>
+                                            </div>
+                                            <div class="p-4 bg-gray-50 dark:bg-black/20 rounded-2xl border border-apple-border/10">
+                                                <div class="text-[10px] font-bold text-apple-secondary uppercase mb-1">Vergi Yükü (Yıllık)</div>
+                                                <div class="text-xl font-bold text-gray-500">{formatTL(corporateTax * 12)}</div>
+                                            </div>
+                                            <div class="p-6 bg-apple-blue rounded-[20px] shadow-lg shadow-apple-blue/20">
+                                                <div class="text-[10px] font-bold text-white/70 uppercase mb-1 tracking-wider">Yıllık Net Kâr</div>
+                                                <div class="text-2xl font-black text-white">{formatTL(monthlyNetProfit * 12)}</div>
+                                            </div>
+                                            
+                                            <div class="pt-4 border-t border-apple-border/20 dark:border-white/5">
+                                                <div class="flex items-center gap-2 text-[11px] font-semibold text-apple-secondary uppercase">
+                                                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                                    Sektörel Reel Verim
+                                                </div>
+                                                <div class="mt-1 text-[11px] text-apple-secondary/70 italic leading-tight">
+                                                    *15 yıllık projeksiyonda kira artışları ve personel yükü %3, genel gelirler ise %5 yıllık ivme ile hesaplanmaktadır.
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
