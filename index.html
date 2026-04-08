@@ -54,9 +54,9 @@
         .settings-scroll::-webkit-scrollbar-thumb { background-color: #d2d2d7; border-radius: 10px; }
         .dark .settings-scroll::-webkit-scrollbar-thumb { background-color: #38383a; }
 
-        input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
+        input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; width: 100%; }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%;
+            -webkit-appearance: none; appearance: none; height: 24px; width: 24px; border-radius: 50%;
             background: #ffffff; cursor: pointer; margin-top: -10px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 0 2px rgba(0,0,0,0.1); border: 1px solid #d2d2d7; transition: transform 0.1s ease;
         }
@@ -67,7 +67,7 @@
         input[type=range]:focus::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2); }
         
         select {
-            -webkit-appearance: none;
+            -webkit-appearance: none; appearance: none;
             background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
             background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em;
         }
@@ -119,6 +119,7 @@
             const [isFullscreen, setIsFullscreen] = useState(false);
 
             const [modelType, setModelType] = useState('bot');
+            const [mainChartView, setMainChartView] = useState('cumulative'); // 'sensitivity' or 'cumulative'
             const [selectedParcel, setSelectedParcel] = useState(PARCELS[8]); 
             const [usedLandRatio, setUsedLandRatio] = useState(100);
             const [pricePerSqm, setPricePerSqm] = useState(15000);
@@ -180,57 +181,6 @@
 
             const formatTL = (num) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(num);
 
-            // Recharts için Ana Veri Üretimi
-            const generateChartData = () => {
-                const data = [];
-                if (modelType === 'buy') {
-                    for (let p = 8000; p <= 40000; p += 8000) {
-                        const tCost = (effectiveSize * p) + facilityCapex;
-                        const roi = monthlyNetProfit > 0 ? parseFloat((tCost / monthlyNetProfit).toFixed(1)) : 0;
-                        data.push({ label: `${p / 1000}k ₺`, GeriDönüş: roi });
-                    }
-                } else if (modelType === 'rent') {
-                    for (let r1k = 20000; r1k <= 300000; r1k += 56000) {
-                        const calculatedRent = (effectiveSize / 1000) * r1k;
-                        const preTax = monthlyRevenue - (fixedOpexTotal + calculatedRent);
-                        const mNet = preTax > 0 ? preTax * 0.75 : 0; 
-                        const roi = mNet > 0 ? parseFloat((facilityCapex / mNet).toFixed(1)) : 0;
-                        data.push({ label: `${Math.round(calculatedRent / 1000)}k Kira`, GeriDönüş: roi });
-                    }
-                } else if (modelType === 'bot') {
-                    const steps = [];
-                    for (let y = 1; y <= botYears; y += Math.ceil(botYears / 6)) { steps.push(y); }
-                    if (!steps.includes(botYears)) steps.push(botYears);
-
-                    steps.forEach(y => {
-                        const cumulative = (monthlyNetProfit * 12 * y) - facilityCapex; 
-                        data.push({
-                            label: `${y}. Yıl`,
-                            KümülatifKâr: parseFloat((cumulative / 1000000).toFixed(2)) // Milyon TL cinsinden
-                        });
-                    });
-                }
-                return data;
-            };
-
-            const chartData = generateChartData();
-
-            // Recharts için Raket Fiyatı Veri Üretimi
-            const generateRacketChartData = () => {
-                const data = [];
-                for (let rp = 50; rp <= 200; rp += 25) {
-                    const dRacketRev = dailyBookedHours * (racketRatio / 100) * avgRacketsPerBooking * rp;
-                    const mRev = (dailyCourtRevenue + dRacketRev + dailyCafeProfit) * 30;
-                    const ebitdaRP = mRev - totalOpex;
-                    const curTax = ebitdaRP > 0 ? ebitdaRP * 0.25 : 0;
-                    const netP = ebitdaRP - curTax;
-                    data.push({ label: `₺${rp}`, NetKâr: Math.round(netP / 1000) }); // Bin TL cinsinden
-                }
-                return data;
-            };
-            
-            const racketChartData = generateRacketChartData();
-
             const mainChartRef = useRef(null);
             const mainChartInstance = useRef(null);
             const racketChartRef = useRef(null);
@@ -246,42 +196,54 @@
 
                 let labels = [], values = [], barColors = [], yLabel = '';
 
-                if (modelType === 'buy') {
+                if (mainChartView === 'sensitivity') {
                     yLabel = 'Amortisman (Ay)';
-                    for (let p = 8000; p <= 40000; p += 8000) {
-                        const tCost = (effectiveSize * p) + facilityCapex;
-                        const roi = monthlyNetProfit > 0 ? parseFloat((tCost / monthlyNetProfit).toFixed(1)) : 0;
-                        labels.push(`${p/1000}k ₺`);
-                        values.push(roi);
-                        barColors.push('#0071e3');
-                    }
-                } else if (modelType === 'rent') {
-                    yLabel = 'Amortisman (Ay)';
-                    for (let r1k = 20000; r1k <= 300000; r1k += 56000) {
-                        const calcRent = (effectiveSize / 1000) * r1k;
-                        const preTax = monthlyRevenue - (fixedOpexTotal + calcRent);
-                        const mNet = preTax > 0 ? preTax * 0.75 : 0;
-                        const roi = mNet > 0 ? parseFloat((facilityCapex / mNet).toFixed(1)) : 0;
-                        labels.push(`${Math.round(calcRent/1000)}k`);
-                        values.push(roi);
-                        barColors.push('#0071e3');
+                    if (modelType === 'buy') {
+                        for (let p = 8000; p <= 40000; p += 8000) {
+                            const tCost = (effectiveSize * p) + facilityCapex;
+                            const roi = monthlyNetProfit > 0 ? parseFloat((tCost / monthlyNetProfit).toFixed(1)) : 0;
+                            labels.push(`${p/1000}k ₺`);
+                            values.push(roi);
+                            barColors.push('#0071e3');
+                        }
+                    } else if (modelType === 'rent') {
+                        for (let r1k = 20000; r1k <= 300000; r1k += 56000) {
+                            const calcRent = (effectiveSize / 1000) * r1k;
+                            const preTax = monthlyRevenue - (fixedOpexTotal + calcRent);
+                            const mNet = preTax > 0 ? preTax * 0.75 : 0;
+                            const roi = mNet > 0 ? parseFloat((facilityCapex / mNet).toFixed(1)) : 0;
+                            labels.push(`${Math.round(calcRent/1000)}k`);
+                            values.push(roi);
+                            barColors.push('#0071e3');
+                        }
+                    } else {
+                        // BOT için hassasiyet: Kira bedeli vs Amortisman
+                        for (let br = 1000; br <= 50000; br += 10000) {
+                            const calcRent = (effectiveSize / 1000) * br;
+                            const preTax = monthlyRevenue - (fixedOpexTotal + calcRent);
+                            const mNet = preTax > 0 ? preTax * 0.75 : 0;
+                            const roi = mNet > 0 ? parseFloat((facilityCapex / mNet).toFixed(1)) : 0;
+                            labels.push(`${Math.round(calcRent/1000)}k`);
+                            values.push(roi);
+                            barColors.push('#10b981');
+                        }
                     }
                 } else {
+                    // CUMULATIVE VIEW
                     yLabel = 'Nakit Akışı (M TL)';
+                    const displayYears = modelType === 'bot' ? botYears : 15;
                     const steps = [];
-                    for (let y = 1; y <= botYears; y += Math.ceil(botYears / 6)) steps.push(y);
-                    if (!steps.includes(botYears)) steps.push(botYears);
+                    for (let y = 1; y <= displayYears; y += Math.ceil(displayYears / 6)) steps.push(y);
+                    if (!steps.includes(displayYears)) steps.push(displayYears);
+                    
                     steps.forEach(y => {
-                        const cum = parseFloat(((monthlyNetProfit * 12 * y - facilityCapex) / 1000000).toFixed(2));
+                        const initialOutlay = modelType === 'buy' ? landCapex + facilityCapex : facilityCapex;
+                        const cum = parseFloat(((monthlyNetProfit * 12 * y - initialOutlay) / 1000000).toFixed(2));
                         labels.push(`${y}. Yıl`);
                         values.push(cum);
-                        barColors.push(cum < 0 ? '#ef4444' : '#10b981');
+                        barColors.push(cum < 0 ? '#ef4444' : (modelType === 'bot' ? '#10b981' : '#0071e3'));
                     });
                 }
-
-                const gradient = mainChartRef.current.getContext('2d').createLinearGradient(0, 0, 0, 220);
-                gradient.addColorStop(0, barColors[0] + 'cc');
-                gradient.addColorStop(1, barColors[0] + '44');
 
                 mainChartInstance.current = new Chart(mainChartRef.current, {
                     type: 'bar',
@@ -315,19 +277,19 @@
                         scales: {
                             x: {
                                 grid: { display: false },
-                                ticks: { color: tickColor, font: { size: 11 } },
+                                ticks: { color: tickColor, font: { size: 10, weight: 'bold' } },
                                 border: { display: false }
                             },
                             y: {
                                 grid: { color: gridColor, drawBorder: false },
-                                ticks: { color: tickColor, font: { size: 11 } },
+                                ticks: { color: tickColor, font: { size: 10 } },
                                 border: { display: false },
-                                title: { display: true, text: yLabel, color: tickColor, font: { size: 10 } }
+                                title: { display: true, text: yLabel, color: tickColor, font: { size: 10, weight: 'bold' } }
                             }
                         }
                     }
                 });
-            }, [modelType, selectedParcel, usedLandRatio, facilityCapex, pricePerSqm, rentPer1K, botRentPer1K, botYears, monthlyNetProfit, monthlyRevenue, fixedOpexTotal, isDark]);
+            }, [modelType, mainChartView, selectedParcel, usedLandRatio, facilityCapex, pricePerSqm, rentPer1K, botRentPer1K, botYears, monthlyNetProfit, monthlyRevenue, fixedOpexTotal, isDark]);
 
             // Chart.js - Raket Grafik
             useEffect(() => {
@@ -338,69 +300,76 @@
                 const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
                 const tickColor = isDark ? '#8e8e93' : '#86868b';
 
-                const grad = ctx.createLinearGradient(0, 0, 0, 220);
-                grad.addColorStop(0, 'rgba(249,115,22,0.55)');
-                grad.addColorStop(1, 'rgba(249,115,22,0.02)');
+                // Saha Fiyatları: 1500, 2500, 3500, 4500
+                const courtRates = [2000, 3000, 4000];
+                const racketPrices = [50, 100, 150, 200];
+                const colors = ['#f97316', '#0071e3', '#10b981'];
 
-                const rLabels = [], rValues = [];
-                for (let rp = 50; rp <= 200; rp += 25) {
-                    const dRacket = dailyBookedHours * (racketRatio/100) * avgRacketsPerBooking * rp;
-                    const mRev = (dailyCourtRevenue + dRacket + dailyCafeProfit) * 30;
-                    const ebit = mRev - totalOpex;
-                    const tax = ebit > 0 ? ebit * 0.25 : 0;
-                    rLabels.push(`₺${rp}`);
-                    rValues.push(Math.round((ebit - tax) / 1000));
-                }
+                const datasets = courtRates.map((cr, idx) => {
+                    const data = racketPrices.map(rp => {
+                        const dBooked = (hoursPerDay * courtCount) * (occupancy / 100);
+                        const dCourtRev = dBooked * cr;
+                        const dRacketRev = dBooked * (racketRatio/100) * avgRacketsPerBooking * rp;
+                        const mRev = (dCourtRev + dRacketRev + dailyCafeProfit) * 30;
+                        const ebit = mRev - totalOpex;
+                        const tax = ebit > 0 ? ebit * 0.25 : 0;
+                        return Math.round((ebit - tax) / 1000);
+                    });
+
+                    return {
+                        label: `Saha: ${formatTL(cr)}`,
+                        data: data,
+                        borderColor: colors[idx],
+                        backgroundColor: colors[idx],
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    };
+                });
 
                 racketChartInstance.current = new Chart(racketChartRef.current, {
                     type: 'line',
                     data: {
-                        labels: rLabels,
-                        datasets: [{
-                            data: rValues,
-                            borderColor: '#f97316',
-                            borderWidth: 3,
-                            fill: true,
-                            backgroundColor: grad,
-                            tension: 0.4,
-                            pointBackgroundColor: '#f97316',
-                            pointRadius: 5,
-                            pointHoverRadius: 8,
-                        }]
+                        labels: racketPrices.map(p => `₺${p} Raket`),
+                        datasets: datasets
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        interaction: { intersect: false, mode: 'index' },
                         plugins: {
-                            legend: { display: false },
+                            legend: { 
+                                display: true, 
+                                position: 'top', 
+                                align: 'end',
+                                labels: { color: tickColor, boxWidth: 12, font: { size: 10, weight: 'bold' } }
+                            },
                             tooltip: {
                                 backgroundColor: isDark ? '#2c2c2e' : '#fff',
                                 titleColor: isDark ? '#fff' : '#1d1d1f',
                                 bodyColor: isDark ? '#8e8e93' : '#86868b',
-                                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-                                borderWidth: 1,
                                 padding: 12,
                                 cornerRadius: 12,
-                                callbacks: { label: ctx => `${ctx.parsed.y} Bin TL / ay` }
+                                callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}k TL/Ay` }
                             }
                         },
                         scales: {
                             x: {
                                 grid: { display: false },
-                                ticks: { color: tickColor, font: { size: 11 } },
-                                border: { display: false },
-                                title: { display: true, text: 'Raket Kirası (₺)', color: tickColor, font: { size: 10 } }
+                                ticks: { color: tickColor, font: { size: 10 } },
+                                border: { display: false }
                             },
                             y: {
                                 grid: { color: gridColor },
-                                ticks: { color: tickColor, font: { size: 11 } },
+                                ticks: { color: tickColor, font: { size: 10 } },
                                 border: { display: false },
-                                title: { display: true, text: 'Aylık Net Kâr (Bin ₺)', color: tickColor, font: { size: 10 } }
+                                title: { display: true, text: 'Aylık Net Kâr (Bin ₺)', color: tickColor, font: { size: 10, weight: 'bold' } }
                             }
                         }
                     }
                 });
-            }, [racketRatio, racketPrice, dailyBookedHours, dailyCourtRevenue, dailyCafeProfit, totalOpex, isDark]);
+            }, [courtCount, occupancy, racketRatio, dailyCafeProfit, totalOpex, isDark]);
 
             useEffect(() => { lucide.createIcons(); }, [selectedParcel, modelType, isDark, selectedImageIndex, isFullscreen]);
 
@@ -797,27 +766,43 @@
                                 
                                 {/* Ana Bar Grafik */}
                                 <div class="bg-apple-card dark:bg-[#1c1c1e] rounded-[28px] p-6 shadow-apple dark:shadow-none border border-apple-border/20 dark:border-apple-darkBorder flex flex-col">
-                                    <div class="mb-4">
-                                        <h3 class="text-sm font-bold tracking-tight text-apple-text dark:text-white uppercase">
-                                            {modelType === 'buy' ? "M² Fiyatı vs Amortisman (Ay)" : modelType === 'bot' ? "Yıllara Göre Kümülatif Nakit Akışı" : "Aylık Kira vs Amortisman (Ay)"}
-                                        </h3>
-                                        <p class="text-[12px] text-apple-secondary dark:text-apple-darkSecondary mt-1">
-                                            {modelType === 'bot' ? "X ekseninde sözleşme yılları, Y ekseninde net servet birikimi (Milyon TL). Kırmızı = henüz zararda, Yeşil = amortize oldu." : "X ekseninde değişken maliyet, Y ekseninde amortisman süresi (Ay)."}
-                                        </p>
+                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                        <div>
+                                            <h3 class="text-sm font-extrabold tracking-tight text-apple-text dark:text-white uppercase flex items-center gap-2">
+                                                <i data-lucide={mainChartView === 'sensitivity' ? "gauge" : "trending-up"} class="w-4 h-4 text-apple-blue"></i>
+                                                {mainChartView === 'sensitivity' ? (modelType === 'buy' ? "Giriş Fiyatı Analizi" : "Kira Sensitivite Analizi") : "Kümülatif Getiri (15 Yıl)"}
+                                            </h3>
+                                            <p class="text-[11px] text-apple-secondary dark:text-apple-darkSecondary mt-1 font-medium">
+                                                {mainChartView === 'sensitivity' ? "Y ekseni: Yatırımın geri dönüş süresi (Ay)." : "Y ekseni: Milyon TL cinsinden toplam net servet."}
+                                            </p>
+                                        </div>
+                                        <div class="flex p-0.5 bg-apple-segmentedBg dark:bg-[#2c2c2e] rounded-lg">
+                                            <button 
+                                                onClick={() => setMainChartView('sensitivity')}
+                                                class={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${mainChartView === 'sensitivity' ? 'bg-white dark:bg-[#48484a] text-apple-text dark:text-white shadow-sm' : 'text-apple-secondary'}`}>
+                                                Hassasiyet
+                                            </button>
+                                            <button 
+                                                onClick={() => setMainChartView('cumulative')}
+                                                class={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${mainChartView === 'cumulative' ? 'bg-white dark:bg-[#48484a] text-apple-text dark:text-white shadow-sm' : 'text-apple-secondary'}`}>
+                                                Kümülatif
+                                            </button>
+                                        </div>
                                     </div>
                                     <div style={{ height: '220px', position: 'relative' }}>
                                         <canvas ref={mainChartRef}></canvas>
                                     </div>
                                 </div>
 
-                                {/* Raket Alan (Line) Grafik */}
+                                {/* Saha + Raket Hassasiyet (Line) Grafik */}
                                 <div class="bg-apple-card dark:bg-[#1c1c1e] rounded-[28px] p-6 shadow-apple dark:shadow-none border border-apple-border/20 dark:border-apple-darkBorder flex flex-col">
                                     <div class="mb-4">
-                                        <h3 class="text-sm font-bold tracking-tight text-apple-text dark:text-white uppercase">
-                                            Raket Fiyatı vs Net Kâr Eğrisi
+                                        <h3 class="text-sm font-extrabold tracking-tight text-apple-text dark:text-white uppercase flex items-center gap-2">
+                                            <i data-lucide="bar-chart-3" class="w-4 h-4 text-orange-500"></i>
+                                            Saha + Raket Gelir Matrisi
                                         </h3>
-                                        <p class="text-[12px] text-apple-secondary dark:text-apple-darkSecondary mt-1">
-                                            X ekseninde raket birimi kirası (50₺ - 200₺), Y ekseninde işletmenin aylık net kârı (Bin TL). Eğrinin ivmesi kira fiyatının gücünü gösterir.
+                                        <p class="text-[11px] text-apple-secondary dark:text-apple-darkSecondary mt-1 font-medium italic">
+                                            Farklı saha kira bedellerine göre raket gelirinin kârlılığa etkisi.
                                         </p>
                                     </div>
                                     <div style={{ height: '220px', position: 'relative' }}>
